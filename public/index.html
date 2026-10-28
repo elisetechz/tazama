@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111111">
+    <meta name="description" content="A home for the stories you love, in the languages that feel like home.">
+    <title>Tazama — Stories in your language</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/runtime-config.js"></script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="page-glow page-glow-top" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Tazama home">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>tazama<span class="brand-period">.</span></span>
+      </a>
+      <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+        <a class="nav-link active" href="#home" data-i18n="navHome">Home</a>
+        <a class="nav-link" href="#discover" data-content-type="movie" data-i18n="navMovies">Movies</a>
+        <a class="nav-link" href="#discover" data-content-type="series" data-i18n="navSeries">Series</a>
+        <a class="nav-link" href="#discover" data-content-type="tv" data-i18n="navTv">TV Shows</a>
+      </nav>
+      <div class="topbar-actions">
+        <label class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.8"></circle><path d="m16 16 4 4"></path></svg>
+          <input id="search-input" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search movies..." autocomplete="off">
+          <kbd>⌘ K</kbd>
+        </label>
+        <button class="language-switch" id="language-toggle" type="button" aria-label="Change language">EN <span>⌄</span></button>
+        <button class="avatar-button" id="admin-open" type="button" aria-label="Open studio">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path><path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="home">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-art" aria-hidden="true"><img id="hero-image" alt=""></div>
+        <div class="hero-shade" aria-hidden="true"></div>
+        <div class="hero-content">
+          <div class="featured-title-lockup"><h1 id="hero-title" data-i18n="heroTitle">Your next favorite<br>starts <em>here.</em></h1></div>
+          <div class="featured-meta" id="featured-meta" hidden></div>
+          <div class="hero-actions">
+            <button class="button button-primary" id="hero-watch" type="button"><span class="play-icon">▶</span><span data-i18n="playFeatured">Play</span></button>
+            <button class="button button-glass" id="hero-details" type="button"><span class="info-icon">i</span><span data-i18n="moreInfo">More info</span></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="collection-section" id="discover">
+        <div class="section-heading">
+          <div>
+            <h2 class="browse-title" data-i18n="browseTitle">Browse</h2>
+            <div class="collection-note"><span class="collection-live-dot"></span><span id="movie-count">0 titles</span></div>
+          </div>
+        </div>
+        <div class="filter-row" id="library">
+          <div class="filter-chips-wrap">
+            <div class="filter-caption" data-i18n="categoriesLabel">Categories</div>
+            <div class="filter-chips" id="genre-filters" aria-label="Filter by category"></div>
+          </div>
+          <div class="vj-filter-wrap">
+            <label class="filter-caption" for="vj-filter" data-i18n="vjLabel">Ugandan VJs</label>
+            <select class="vj-filter" id="vj-filter"><option value="" data-i18n="allVjs">All VJs</option></select>
+          </div>
+          <button class="filter-chip saved-filter" id="saved-filter" type="button"><span>♡</span><span data-i18n="filterSaved">Saved for later</span></button>
+        </div>
+        <div class="movie-grid" id="movie-grid" aria-live="polite"></div>
+        <div class="empty-state" id="empty-state" hidden>
+          <div class="empty-orbit" aria-hidden="true"><span>✳</span><i></i><b></b></div>
+          <p class="empty-kicker" data-i18n="emptyKicker">Nothing here yet</p>
+          <h3 data-i18n="emptyTitle">Add your first title</h3>
+          <p data-i18n="emptyDescription">Upload a movie, series, or TV show.</p>
+          <button class="button button-primary" id="empty-add" type="button"><span data-i18n="emptyButton">Open studio</span><span aria-hidden="true">↗</span></button>
+        </div>
+        <p class="library-status" id="library-status"></p>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <a class="brand footer-brand" href="#home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span><span>tazama<span class="brand-period">.</span></span></a>
+      <span>© <span id="current-year"></span> Tazama</span>
+    </footer>
+
+    <dialog class="movie-dialog" id="movie-dialog" aria-label="Movie details">
+      <button class="dialog-close" data-close-dialog type="button" aria-label="Close">×</button>
+      <div id="movie-dialog-content"></div>
+    </dialog>
+
+    <dialog class="studio-dialog" id="studio-dialog" aria-label="Tazama studio">
+      <div class="studio-panel">
+        <button class="dialog-close" data-close-studio type="button" aria-label="Close">×</button>
+        <div class="section-kicker"><span class="kicker-line"></span><span data-i18n="studioPanelKicker">TAZAMA STUDIO</span></div>
+        <div id="studio-content"></div>
+      </div>
+    </dialog>
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>
