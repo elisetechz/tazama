@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: tazama-api
+    runtime: node
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: tazama-data
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: UPLOAD_DIR
+        value: /var/data/upload-tmp
+      - key: TRUST_PROXY
+        value: "true"
+      - key: MAX_VIDEO_SIZE_MB
+        value: "2048"
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: R2_ACCOUNT_ID
+        value: 2a5adfdda10539ce48723649aa3a341e
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        value: elise
