@@ -750,33 +750,103 @@ function addSubtitle() {
 async function uploadMovie(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const data = new FormData(form);
   const subtitleRows = [...form.querySelectorAll(".subtitle-row")];
-  data.delete("subtitleLanguage");
-  data.delete("poster");
   const poster = form.querySelector("#poster-file").files[0];
-  if (poster) data.append("poster", poster);
+  const video = form.querySelector("#video-file").files[0];
+  const files = [{ id: crypto.randomUUID(), field: "video", file: video }];
+  if (poster) files.push({ id: crypto.randomUUID(), field: "poster", file: poster });
   for (const row of subtitleRows) {
     const file = row.querySelector('input[type="file"]').files[0];
     if (!file) continue;
-    data.append("subtitles", file);
-    data.append("subtitleLanguages", row.querySelector("select").value);
+    files.push({
+      id: crypto.randomUUID(),
+      field: "subtitles",
+      file,
+      languageCode: row.querySelector("select").value,
+    });
   }
+  const formData = new FormData(form);
+  const metadata = {
+    title: formData.get("title"),
+    videoLanguage: formData.get("videoLanguage"),
+    contentType: formData.get("contentType") || "movie",
+    vjName: formData.get("vjName") || "",
+    releaseYear: formData.get("releaseYear") || "",
+    genres: formData.get("genres") || "",
+    synopsis: formData.get("synopsis") || "",
+  };
   const errorBox = form.querySelector("#form-error");
   const button = form.querySelector('button[type="submit"]');
   errorBox.classList.remove("visible");
   button.disabled = true;
   button.textContent = t("uploadingMovie");
+  let uploadId = "";
   try {
-    await request("/api/admin/movies", {
+    const initialized = await request("/api/admin/uploads", {
       method: "POST",
       headers: { "X-CSRF-Token": state.csrf },
-      body: data,
+      body: JSON.stringify({
+        metadata,
+        files: files.map(({ id, field, file, languageCode }) => ({
+          id,
+          field,
+          name: file.name,
+          size: file.size,
+          languageCode,
+        })),
+      }),
     });
+    uploadId = initialized.uploadId;
+    const totalBytes = files.reduce((total, item) => total + item.file.size, 0);
+    let uploadedBytes = 0;
+    for (const item of files) {
+      const partCount = Math.ceil(item.file.size / initialized.partSize);
+      for (let partNumber = 1; partNumber <= partCount; partNumber += 1) {
+        const start = (partNumber - 1) * initialized.partSize;
+        const chunk = item.file.slice(start, Math.min(start + initialized.partSize, item.file.size));
+        const response = await fetch(apiUrl(
+          `/api/admin/uploads/${encodeURIComponent(uploadId)}/files/${encodeURIComponent(item.id)}/parts/${partNumber}`,
+        ), {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": state.csrf,
+            "Content-Type": "application/octet-stream",
+          },
+          body: chunk,
+        });
+        let result;
+        try {
+          result = await response.json();
+        } catch {
+          result = {};
+        }
+        if (!response.ok) throw new Error(result.error || `Upload failed (${response.status}).`);
+        uploadedBytes += chunk.size;
+        button.textContent = `${t("uploadingMovie")} ${Math.round((uploadedBytes / totalBytes) * 100)}%`;
+      }
+    }
+    await request(`/api/admin/uploads/${encodeURIComponent(uploadId)}/complete`, {
+      method: "POST",
+      headers: { "X-CSRF-Token": state.csrf },
+      body: JSON.stringify({}),
+    });
+    uploadId = "";
     await loadMovies();
     showAdmin();
     showToast(t("uploadSuccess"));
   } catch (error) {
+    if (uploadId) {
+      try {
+        await request(`/api/admin/uploads/${encodeURIComponent(uploadId)}/abort`, {
+          method: "POST",
+          headers: { "X-CSRF-Token": state.csrf },
+          body: JSON.stringify({}),
+        });
+      } catch {
+        console.error("Could not clean up the incomplete movie upload.", error);
+      }
+    }
     errorBox.textContent = error.message;
     errorBox.classList.add("visible");
     button.disabled = false;
