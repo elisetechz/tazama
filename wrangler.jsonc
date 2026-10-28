@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tazama-api",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-28",
+  "workers_dev": true,
+  "vars": {
+    "FRONTEND_ORIGIN": "https://replace-with-your-netlify-site.netlify.app",
+    "MEDIA_BUCKET_NAME": "elise"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tazama-catalog",
+      "database_id": "CREATE_D1_DATABASE_AND_REPLACE_WITH_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "elise"
+    }
+  ]
+}

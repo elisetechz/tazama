@@ -48,22 +48,32 @@ Run `npm test` to exercise sign-in, authorization, uploads, subtitles, media ran
 - Each upload represents one playable video title. Series and TV Shows are catalog categories; season and episode management is not included.
 - Uploaded files and the SQLite database are stored under `uploads/` and `data/`. Back up both directories.
 
-## Deploy Netlify + Render + Cloudflare R2
+## Deploy Netlify + Cloudflare Workers + D1 + R2
 
-The Netlify site serves the public interface; Render runs the Express API and SQLite catalog; Cloudflare R2 stores movie, poster, and subtitle files. The Render blueprint in `render.yaml` configures a persistent disk for the SQLite database. Set secrets in provider dashboards only; never commit them or paste them into chat.
+Netlify hosts the storefront. A Cloudflare Worker runs the API, D1 stores the catalog, and the existing private R2 bucket stores the video, poster, and subtitle files. The Worker accepts 8 MiB upload parts, so a large video is uploaded in small requests rather than exceeding the Workers request-body limit. Secrets belong in Cloudflare's secret manager, never in source control or chat.
 
-1. Install Git if needed and publish this project to a private GitHub repository. The `.gitignore` excludes `.env`, the database, uploaded files, and generated Netlify output; confirm that secrets and personal movie files are not included in the repository.
-2. In Cloudflare, confirm the `elise` R2 bucket exists. Create an R2 S3 API token scoped to that bucket with object read/write access. Do not create a general Cloudflare account API token. The account ID and bucket name from your supplied endpoint are already filled in `render.yaml`; the access key and secret are private and must only be entered in Render's environment setup.
-3. Import the GitHub repository into Netlify and choose a permanent `*.netlify.app` site name. The first deploy can run without `TAZAMA_API_BASE`; this publishes the static interface so you can get its exact site origin.
-4. In Render, create a new Blueprint from the same repository. Set `FRONTEND_ORIGIN` to the exact Netlify origin, for example `https://your-site.netlify.app` (no trailing slash). Set a unique `ADMIN_PASSWORD` of at least 12 characters and enter the R2 access key and secret when prompted. The blueprint generates `SESSION_SECRET`; it configures the supplied R2 account/bucket and stores the SQLite database on a persistent disk.
-5. After Render deploys, open its service and check `/api/health`. It should report `"mediaStorage":"r2"`. Copy the Render public HTTPS origin (for example `https://tazama-api.onrender.com`) into Netlify's `TAZAMA_API_BASE` environment variable, then trigger a new Netlify deploy.
-6. Open the public Netlify URL and sign in to the Studio. Use **Check R2 connection** before uploading, then upload a test video and play it. Public visitors can browse and stream the catalog. Only upload movies and artwork you have permission to share.
+### Cloudflare Worker setup
 
-The two origins must match exactly: Netlify `TAZAMA_API_BASE` is the Render HTTPS origin; Render `FRONTEND_ORIGIN` is the Netlify HTTPS origin. For reliable Studio sign-in across browsers, use a custom domain and put the API on a subdomain of the same domain (for example `watch.example.com` and `api.example.com`); browsers may block third-party cookies between the default Netlify and Render domains. The public movie catalog and media routes are intentionally viewable without sign-in; the Studio remains protected.
+1. Install Node.js 22 and npm, then clone the `elisetechz/tazama` GitHub repository and run `npm install`.
+2. Sign in to Cloudflare CLI: `npx wrangler login`.
+3. Create the free D1 database: `npx wrangler d1 create tazama-catalog`. Copy its database ID into `wrangler.jsonc`, replacing `CREATE_D1_DATABASE_AND_REPLACE_WITH_ID`.
+4. Confirm the R2 bucket named `elise` exists in the same Cloudflare account. The R2 bucket is attached to the Worker through the `MEDIA_BUCKET` binding in `wrangler.jsonc`; do not put R2 API keys in the Worker.
+5. In `wrangler.jsonc`, set `FRONTEND_ORIGIN` to the exact Netlify site origin (no trailing slash), for example `https://your-site.netlify.app`.
+6. Create the D1 tables: `npm run migrate:worker`.
+7. Set the private Worker secrets from the terminal prompts: `npx wrangler secret put ADMIN_PASSWORD` and `npx wrangler secret put SESSION_SECRET`. Use an administrator password with at least 12 characters and a unique random session secret of at least 32 characters. Do not put either value in `wrangler.jsonc`.
+8. Deploy the API: `npm run deploy:worker`. Check `https://<worker-name>.<account-subdomain>.workers.dev/api/health`; the response should include `"mediaStorage":"r2"`.
 
-This deployment stores new uploads in R2. The database and uploads on your current computer are not automatically copied to the public deployment; upload those videos again through the deployed Studio after launch. Render's persistent disk is required for SQLite; do not remove it or redeploy to a service without persistent storage. The R2 bucket can remain private: media is streamed through the authenticated app server's R2 credentials, so no public R2 bucket URL or R2 CORS rule is required.
+### Netlify storefront setup
 
-For a custom domain, configure it in Netlify and update Render's `FRONTEND_ORIGIN` to the final domain. Set a strong private administrator password, keep `.env`, `data/`, and `uploads/` out of source control, and set `TRUST_PROXY=true` behind the trusted Render proxy.
+1. Import the same GitHub repository into Netlify. The build command is `node scripts/build-netlify.mjs`; the publish directory is `dist`. Deploy once and note the site origin.
+2. Set `FRONTEND_ORIGIN` in `wrangler.jsonc` to that exact Netlify origin, redeploy the Worker, and set Netlify's `TAZAMA_API_BASE` environment variable to the Worker HTTPS origin (no path or trailing slash).
+3. Redeploy Netlify. Open the site, sign in to the Studio, run **Check R2 connection**, and upload a small test movie before uploading your library.
+
+The default Netlify and `workers.dev` hostnames are different sites, and some browsers block cross-site sign-in cookies. If Studio login is blocked, use a custom domain with the site and API on subdomains of the same registered domain. The public catalog and media are intentionally readable without sign-in; administrative actions require a signed session and CSRF token.
+
+The Workers Free plan has daily request and CPU limits; D1 Free has a 500 MB database limit and a 50-query-per-invocation limit; R2 Standard has 10 GB-month free storage, with internet egress free. R2 storage and operation use beyond its free allowance can cost money. A 507 MB movie fits the stated R2 storage allowance on its own, but the limit is shared by all files in the bucket. Large uploads use 8 MiB parts and video files are limited to 2 GB. See current [Workers limits](https://developers.cloudflare.com/workers/platform/limits/), [D1 limits](https://developers.cloudflare.com/d1/platform/limits/), and [R2 pricing](https://developers.cloudflare.com/r2/pricing/) before publishing.
+
+The local database and uploaded files are not automatically copied to the cloud. After deployment, upload each movie again through the deployed Studio. Keep `.env`, `data/`, `uploads/`, and generated build output out of source control, and upload only content you have permission to distribute.
 
 ## Local development
 
