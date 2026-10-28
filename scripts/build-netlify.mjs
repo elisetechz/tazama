@@ -8,7 +8,7 @@ const apiBase = String(process.env.TAZAMA_API_BASE || "").replace(/\/+$/, "");
 if (apiBase) {
   const parsed = new URL(apiBase);
   if (parsed.protocol !== "https:" || parsed.origin !== apiBase) {
-    throw new Error("TAZAMA_API_BASE must be an HTTPS origin without a path, for example https://your-service.onrender.com.");
+    throw new Error("TAZAMA_API_BASE must be an HTTPS origin without a path, for example https://tazama-api.your-account.workers.dev.");
   }
 }
 
